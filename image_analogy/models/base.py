@@ -18,9 +18,9 @@ class BaseModel(object):
         self.layer_map = dict([(layer.name, layer) for layer in self.net.layers])
         self._f_layer_outputs = {}
 
-    def build(self, a_image, ap_image, b_image, output_shape):
+    def build(self, a_image, ap_image, b_image, output_shape, c_image=None, c_mask=None):
         self.output_shape = output_shape
-        loss = self.build_loss(a_image, ap_image, b_image)
+        loss = self.build_loss(a_image, ap_image, b_image, c_image=c_image, c_mask=c_mask)
         # get the gradients of the generated image wrt the loss
         grads = K.gradients(loss, self.net_input)
         outputs = [loss]

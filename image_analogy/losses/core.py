@@ -11,3 +11,7 @@ def total_variation_loss(x, num_rows, num_cols):
 
 def content_loss(a, b):
     return K.sum(K.square(a - b))
+
+
+def consistency_loss(a, b, mask):
+    return K.sum(mask * K.square(a - b)) / K.sum(mask) # Note: sum of mask, not size of mask.

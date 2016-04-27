@@ -21,6 +21,15 @@ def main(args, model_class):
     full_ap_image = img_utils.load_image(args.ap_image_path)
     full_a_image = img_utils.load_image(args.a_image_path)
     full_b_image = img_utils.load_image(args.b_image_path)
+    if args.consistency_image_path is not None:
+        full_c_image = img_utils.load_image(args.consistency_image_path)
+        assert full_c_image.shape[2] == 4, "Consistency image has to have alpha channel, that's where the mask comes from."
+        alpha = full_c_image[:, :, 3] / 255
+        full_c_mask = np.stack([alpha]*3, axis=-1)
+        full_c_image = full_c_image[:, :, :3]
+    else:
+        full_c_image = None
+
     # calculate the output size
     full_img_width, full_img_height = calculate_image_dims(args, full_b_image)
     img_num_channels = 3  # TODO: allow alpha
@@ -46,6 +55,12 @@ def main(args, model_class):
             zoom_ratio = img_width / float(x.shape[-1])
             x = scipy.ndimage.zoom(x, (1, zoom_ratio, zoom_ratio), order=1)
             img_height, img_width = x.shape[-2:]
+        if full_c_image is not None:
+            c_image = img_utils.preprocess_image(full_c_image, img_width, img_height)
+            c_mask = img_utils.preprocess_image(full_c_mask, img_width, img_height, do_conditioning=False)
+        else :
+            c_image = None
+            c_mask = None
         # determine scaling of "A" images
         if args.a_scale_mode == 'match':
             a_img_width = img_width
@@ -66,7 +81,7 @@ def main(args, model_class):
         # load up the net and create the model
         net = vgg16.get_model(img_width, img_height, weights_path=args.vgg_weights, pool_mode=args.pool_mode)
         model = model_class(net, args)
-        model.build(a_image, ap_image, b_image, (1, img_num_channels, img_height, img_width))
+        model.build(a_image, ap_image, b_image, (1, img_num_channels, img_height, img_width), c_image=c_image, c_mask=c_mask)
 
         for i in range(args.num_iterations_per_scale):
             print('Start of iteration {} x {}'.format(scale_i, i))
