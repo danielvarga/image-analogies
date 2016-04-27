@@ -93,9 +93,12 @@ def parse_args():
                         default=0.02, help='Drop the bottom x percentile and scale by the top (100 - x)th percentile')
 
     parser.add_argument('--consistency-filename', dest='consistency_image_path', type=str,
-                        help='Path to pixelspace target C. This is a partially transparent image C, forcing B\' content at the non-transparent pixels.')
+                        help='Path to pixelspace target. This is a partially transparent image C, forcing B\' content at the non-transparent pixels.')
     parser.add_argument('--consistency-w', dest='consistency_weight', type=float,
                         default=0.0, help='Weight for content loss between B\' and pixelspace target C.')
+
+    parser.add_argument('--slices', dest='slices', type=int,
+                        default=None, help='Slices B\' into a horizontal row of this many smaller images, then processes and combines them.')
 
 
     args = parser.parse_args()

@@ -11,7 +11,7 @@ import time
 
 import image_analogy.argparser
 import image_analogy.main
-
+import image_analogy.slices
 
 if __name__ == '__main__':
     args = image_analogy.argparser.parse_args()
@@ -22,9 +22,13 @@ if __name__ == '__main__':
         else:
             print('Using brute-force model')
             from image_analogy.models.analogy import AnalogyModel as model_class
-        start_time = time.time()
         try:
-            image_analogy.main.main(args, model_class)
+            start_time = time.time()
+            if args.slices is not None:
+                print('Slicing image into manageable pieces.')
+                image_analogy.slices.main(args, model_class)
+            else:
+                image_analogy.main.main(args, model_class)
         except KeyboardInterrupt:
             print('Shutting down...')
         print('Done after {:.2f} seconds'.format(time.time() - start_time))
