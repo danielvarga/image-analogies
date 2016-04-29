@@ -55,7 +55,12 @@ class AnalogyModel(BaseModel):
         if self.args.b_bp_content_weight != 0.0:
             print('Adding B B\' content loss with weight %f' % self.args.b_bp_content_weight)
             for layer_name in self.args.b_content_layers:
-                b_features = K.variable(all_b_features[layer_name][0])
+                print(layer_name)
+                act = all_b_features[layer_name][0]
+                med = sorted(np.absolute(act).flatten().tolist())[-self.args.patch_size]
+                print('size', act.size, 'shape', act.shape, 'med', med, 'abs above count', np.sum(np.absolute(act)>=med))
+                act *= (np.absolute(act)>=med).astype(int)
+                b_features = K.variable(act)
                 # current combined output
                 bp_features = self.get_layer_output(layer_name)
                 cl = content_loss(bp_features, b_features)
