@@ -22,9 +22,11 @@ def main(args, model_class):
     full_a_image = img_utils.load_image(args.a_image_path)
     full_b_image = img_utils.load_image(args.b_image_path)
     if args.consistency_image_path is not None:
-        full_c_image = img_utils.load_image(args.consistency_image_path)
-        assert full_c_image.shape[2] == 4, "Consistency image has to have alpha channel, that's where the mask comes from."
-        alpha = full_c_image[:, :, 3] / 255
+        full_c_image = img_utils.load_image(args.consistency_image_path, remove_alpha=False)
+        if full_c_image.shape[2]==4:
+            alpha = full_c_image[:, :, 3] / 255
+        else:
+            alpha = np.ones_like(full_c_image[:, :, 0])
         full_c_mask = np.stack([alpha]*3, axis=-1)
         full_c_image = full_c_image[:, :, :3]
     else:

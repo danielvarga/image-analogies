@@ -5,9 +5,12 @@ from . import vgg16
 
 
 # util function to open, resize and format pictures into appropriate tensors
-def load_image(image_path):
-    return imread(image_path)# , mode='RGB')  # NOTE: this mode kwarg requires v0.17
-
+def load_image(image_path, remove_alpha=True):
+    im = imread(image_path)
+    if im.shape[2]==4 and remove_alpha:
+        im = im[:, :, :3]
+        print('WARNING: Removed alpha channel from image {}'.format(image_path))
+    return im
 
 # util function to open, resize and format pictures into appropriate tensors
 def preprocess_image(x, img_width, img_height, do_conditioning=True):
