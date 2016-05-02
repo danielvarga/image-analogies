@@ -3,7 +3,7 @@ import time
 import numpy as np
 from keras import backend as K
 
-from image_analogy.losses.core import content_loss
+from image_analogy.losses.core import content_loss, consistency_loss
 from image_analogy.losses.nnf import nnf_analogy_loss, NNFState, PatchMatcher
 from image_analogy.losses.neural_style import neural_style_loss
 
@@ -12,9 +12,9 @@ from .base import BaseModel
 
 class NNFModel(BaseModel):
     '''Faster model for image analogies.'''
-    def build(self, a_image, ap_image, b_image, output_shape):
+    def build(self, a_image, ap_image, b_image, output_shape, c_image=None, c_mask=None):
         self.output_shape = output_shape
-        loss = self.build_loss(a_image, ap_image, b_image)
+        loss = self.build_loss(a_image, ap_image, b_image, c_image=c_image, c_mask=c_mask)
         # get the gradients of the generated image wrt the loss
         grads = K.gradients(loss, self.net_input)
         outputs = [loss]
@@ -46,7 +46,7 @@ class NNFModel(BaseModel):
             grad_values = np.array(outs[1:]).flatten().astype('float64')
         return loss_value, grad_values
 
-    def build_loss(self, a_image, ap_image, b_image):
+    def build_loss(self, a_image, ap_image, b_image, c_image=None, c_mask=None):
         '''Create an expression for the loss as a function of the image inputs.'''
         print('Building loss...')
         loss = super(NNFModel, self).build_loss(a_image, ap_image, b_image)
@@ -55,6 +55,7 @@ class NNFModel(BaseModel):
         all_a_features, all_ap_image_features, all_b_features = self.precompute_static_features(a_image, ap_image, b_image)
         print('Building and combining losses...')
         if self.args.analogy_weight:
+            print('Adding analogy loss with weight %f' % self.args.analogy_weight)
             for layer_name in self.args.analogy_layers:
                 a_features = all_a_features[layer_name][0]
                 ap_image_features = all_ap_image_features[layer_name][0]
@@ -71,6 +72,7 @@ class NNFModel(BaseModel):
         existing_feature_nnfs = getattr(self, 'feature_nnfs', [None] * len(self.args.mrf_layers))
         self.feature_nnfs = []
         if self.args.mrf_weight:
+            print('Adding MRF loss with weight %f' % self.args.mrf_weight)
             for layer_name, existing_nnf in zip(self.args.mrf_layers, existing_feature_nnfs):
                 ap_image_features = all_ap_image_features[layer_name][0]
                 # current combined output
@@ -89,6 +91,7 @@ class NNFModel(BaseModel):
                 loss += (self.args.mrf_weight / len(self.args.mrf_layers)) * sl
 
         if self.args.b_bp_content_weight:
+            print('Adding B B\' content loss with weight %f' % self.args.b_bp_content_weight)
             for layer_name in self.args.b_content_layers:
                 b_features = K.variable(all_b_features[layer_name][0])
                 # current combined output
@@ -97,6 +100,7 @@ class NNFModel(BaseModel):
                 loss += self.args.b_bp_content_weight / len(self.args.b_content_layers) * cl
 
         if self.args.neural_style_weight != 0.0:
+            print('Adding neural style loss with weight %f' % self.args.neural_style_weight)
             for layer_name in self.args.neural_style_layers:
                 ap_image_features = K.variable(all_ap_image_features[layer_name][0])
                 layer_features = self.get_layer_output(layer_name)
@@ -105,5 +109,13 @@ class NNFModel(BaseModel):
                 combination_features = layer_features[0, :, :, :]
                 nsl = neural_style_loss(ap_image_features, combination_features, 3, self.output_shape[-2], self.output_shape[-1])
                 loss += (self.args.neural_style_weight / len(self.args.neural_style_layers)) * nsl
+
+        if self.args.consistency_weight != 0.0:
+            print('Adding pixelspace consistency loss with weight %f' % self.args.consistency_weight)
+            assert c_image is not None and c_mask is not None
+            assert c_image.shape == c_mask.shape
+            x = self.net_input
+            c_loss = self.args.consistency_weight * consistency_loss(x, c_image, c_mask)
+            loss += c_loss
 
         return loss
