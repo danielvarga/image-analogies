@@ -115,6 +115,17 @@ Parameters
   the default and requires less GPU memory but is less accurate then brute.
  * --nstyle-w Weight for neural style loss between A' and B'
  * --nstyle-layers Comma-separated list of layer names to be used for the neural style
+ * --consistency-filename Path to pixelspace target. This is a partially transparent image C,
+forcing B\' content at the non-transparent pixels.
+It can also be used to achieve a raw form of temporal consistency
+in animations, by putting previous output frame here.
+ * --consistency-w Weight for content loss between B\' and pixelspace target C.
+Use a value above 1e7 (!) for spatial consistency (building large images from smaller overlapping parts).
+Use a value around 1e6 for temporal consistency (making
+the current frame of your animation consistent with the previous one).
+ * --slices Slices B\' into a horizontal row of this many smaller images, then processes and combines them.
+Requires setting the --consistency-w to a huge value, see above.
+
 The analogy loss is the amount of influence of B -> A -> A' -> B'. It's a
 structure-preserving mapping of Image B into A' via A.
 
@@ -124,6 +135,18 @@ parlance of style transfer, this is the style loss which gives texture to the im
 The B/B' content loss is set to 0.0 by default. You can get effects similar
 to CNNMRF by turning this up and setting analogy weight to zero. Or leave the
 analogy loss on for some extra style guidance.
+
+The B/B' pixelspace loss aka consistency loss is set to 0.0 by default.
+It can be used to create images that are consistent spatially
+(stichable), or temporally (smoothly animating).
+Just add `--consistency-w 1e6 --consistency-filename $LAST_RENDERED_FRAME`
+for smoother animations. For spatial consistency, use the alpha channel to set the
+parts of the image that are pre-determined.
+
+The --slices switch makes it possible to render arbitrarily high
+resulution images with a limited memory budget. It slices-processes-blends
+B images, and it uses consistency loss under the hood to make each output
+slice consistent with its already rendered left neighbor.
 
 If you'd like to only visualize the analogy target to see what's happening,
 set the MRF and content loss to zero: `--mrf-w=0 --content-w=0` This is also
