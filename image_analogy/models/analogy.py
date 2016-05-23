@@ -56,14 +56,21 @@ class AnalogyModel(BaseModel):
             print('Adding B B\' content loss with weight %f' % self.args.b_bp_content_weight)
             for layer_name in self.args.b_content_layers:
                 print(layer_name)
-                act = all_b_features[layer_name][0]
-                med = sorted(np.absolute(act).flatten().tolist())[-self.args.patch_size]
-                print('size', act.size, 'shape', act.shape, 'med', med, 'abs above count', np.sum(np.absolute(act)>=med))
-                act *= (np.absolute(act)>=med).astype(int)
-                b_features = K.variable(act)
-                # current combined output
                 bp_features = self.get_layer_output(layer_name)
-                cl = content_loss(bp_features, b_features)
+                act = all_b_features[layer_name][0]
+                med = sorted(np.absolute(act).flatten().tolist())[-int(self.args.patch_size*act.size)]
+                print('size', act.size, 'shape', act.shape, 'min', np.min(act), 'med', med, 'abs above count', np.sum(np.absolute(act)>=med))
+
+                masking = False
+
+                if masking:
+                    mask = (np.absolute(act)>=med).astype(float)
+                    cl = consistency_loss(bp_features, b_features, mask)
+                else:
+                    act *= (np.absolute(act)>=med).astype(int)
+                    b_features = K.variable(act)
+                    cl = content_loss(bp_features, b_features)
+
                 loss += self.args.b_bp_content_weight / len(self.args.b_content_layers) * cl
 
         if self.args.neural_style_weight != 0.0:
